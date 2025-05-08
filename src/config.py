@@ -22,6 +22,10 @@ ALBUMENTATION_PRESET = 'medium'  # 'light', 'medium', 'heavy'
 ALBUMENTATION_AUGMENTATIONS_PER_IMAGE = 5  # Number of augmented versions to create per image
 ALBUMENTATION_VISUALIZE = False  # Whether to save visualizations of augmented images
 
+# Efficient augmentation options
+EFFICIENT_AUGMENTATION = True  # Use on-the-fly augmentation instead of pre-generating augmented data
+CACHE_IMAGES = False  # Cache images in memory (only for small datasets)
+
 # Inference parameters
 CONFIDENCE_THRESHOLD = 0.25
 IOU_THRESHOLD = 0.45

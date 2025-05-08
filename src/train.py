@@ -12,7 +12,11 @@ from ultralytics import YOLO
 
 # Import project config
 from config import *
-from utils.augmentations import create_custom_dataset_with_augmentations
+from utils.augmentations import (
+    create_custom_dataset_with_augmentations,
+    create_efficient_dataloaders,
+    patch_ultralytics_for_albumentation
+)
 
 
 def parse_args():
@@ -42,6 +46,10 @@ def parse_args():
                         help='Albumentations preset (light, medium, heavy)')
     parser.add_argument('--albumentation-per-image', type=int, default=ALBUMENTATION_AUGMENTATIONS_PER_IMAGE,
                         help='Number of augmentations per image')
+    parser.add_argument('--efficient', action='store_true', default=EFFICIENT_AUGMENTATION,
+                        help='Use efficient on-the-fly augmentation')
+    parser.add_argument('--cache-images', action='store_true', default=CACHE_IMAGES,
+                        help='Cache images in memory (for small datasets)')
     
     return parser.parse_args()
 
@@ -117,7 +125,13 @@ def main():
     if args.use_albumentation:
         print(f"Using Albumentations: {args.use_albumentation}")
         print(f"Augmentation Preset: {args.albumentation_preset}")
-        print(f"Augmentations Per Image: {args.albumentation_per_image}")
+        
+        if args.efficient:
+            print(f"Using efficient on-the-fly augmentation")
+            print(f"Cache images: {args.cache_images}")
+        else:
+            print(f"Pre-generating augmented dataset")
+            print(f"Augmentations Per Image: {args.albumentation_per_image}")
     
     print("=" * 50)
     
@@ -125,10 +139,40 @@ def main():
     save_dir = Path(args.project) / args.name
     save_dir.mkdir(parents=True, exist_ok=True)
     
-    # Apply Albumentations augmentations if enabled
+    # Set up augmentations
     data_path = args.data
+    
     if args.use_albumentation:
-        data_path = prepare_dataset_with_augmentations(args.data, args)
+        if args.efficient:
+            # Use on-the-fly augmentation - we don't need to pre-generate an augmented dataset
+            print("Using efficient on-the-fly Albumentations augmentation during training...")
+            
+            try:
+                # Prepare for monkey patching Ultralytics
+                print("Preparing to integrate Albumentations with Ultralytics YOLO...")
+                patched_classes = patch_ultralytics_for_albumentation(
+                    data_path,
+                    img_size=args.imgsz,
+                    augment=True,
+                    augment_preset=args.albumentation_preset,
+                    cache=args.cache_images
+                )
+                
+                # We'll use the AlbumentationsYOLODataset in Ultralytics
+                # This will be injected into the model training process
+                yolo_albumentation_dataset = patched_classes.get("AlbumentationsYOLODataset")
+                
+                # Store it for YOLO to use it
+                import ultralytics.data.dataset
+                ultralytics.data.dataset.YOLODataset = yolo_albumentation_dataset
+                print("Successfully integrated Albumentations with Ultralytics YOLO.")
+                
+            except Exception as e:
+                print(f"Warning: Could not set up efficient augmentation: {e}")
+                print("Falling back to standard training...")
+        else:
+            # Pre-generate augmented dataset
+            data_path = prepare_dataset_with_augmentations(args.data, args)
     
     # Load model
     model = YOLO(args.model)

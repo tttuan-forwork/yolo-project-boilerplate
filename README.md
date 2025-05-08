@@ -45,7 +45,11 @@ python src/train.py --data data/dataset.yaml --model yolov8n.pt --epochs 100
 
 With Albumentations augmentation:
 ```bash
-python src/train.py --data data/dataset.yaml --model yolov8n.pt --epochs 100 --use-albumentation --albumentation-preset medium --albumentation-per-image 5
+# Pre-generated augmentation approach (good for small datasets)
+python src/train.py --data data/dataset.yaml --model yolov8n.pt --epochs 100 --use-albumentation --albumentation-preset medium --albumentation-per-image 5 --no-efficient
+
+# Efficient on-the-fly augmentation (recommended for large datasets)
+python src/train.py --data data/dataset.yaml --model yolov8n.pt --epochs 100 --use-albumentation --albumentation-preset medium --efficient
 ```
 
 ### Inference
@@ -70,6 +74,14 @@ Available augmentation presets:
 - `light`: Basic augmentations (flips, brightness/contrast)
 - `medium`: Moderate augmentations (flips, shifts, rotations, color adjustments, blur)
 - `heavy`: Intensive augmentations (all medium plus weather effects, noise, advanced transformations)
+
+#### Efficient Augmentation for Large Datasets
+
+For large datasets, use the `--efficient` flag to perform augmentations on-the-fly during training instead of pre-generating augmented images. This saves disk space and preprocessing time:
+
+```bash
+python src/train.py --data data/dataset.yaml --model yolov8n.pt --use-albumentation --efficient
+```
 
 ## Data Format
 
